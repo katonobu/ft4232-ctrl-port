@@ -15,3 +15,6 @@ npm install --save-dev @types/w3c-web-serial @types/web
 ### 実装
 - [参考情報](https://reffect.co.jp/html/toggle-switch/)
 
+### git-hub pageへのデプロイ
+- [参考情報](https://github.com/sitek94/vite-deploy-demo)
+- 
