@@ -18,8 +18,11 @@ export class HwAccessFt4232 extends HwAccess {
         option:any
     ):Promise<boolean> {
 //        console.log("Ft4232Init()")
+        // WebSerialが使えない?
+        if (!('serial' in navigator)){
+            throw( new Error("This device is not support WebSerial-API."))
         // すでにOpenされている?
-        if (0 <= this.currentUsingPortId) {
+        } else if (0 <= this.currentUsingPortId) {
             return true
         } else {
             let ports = this.jsw.getPorts()

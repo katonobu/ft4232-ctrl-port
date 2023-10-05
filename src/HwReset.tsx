@@ -11,7 +11,8 @@ enum resetSequenceEnum {
 const setHwAndEnablePortStt = async (
     stt: boolean,
     hwAccess: HwAccess | null,
-    setEnablePortStt: (stt: boolean) => void
+    setEnablePortStt: (stt: boolean) => void,
+    setErrMsg: (msgs:string[]) => void
 ): Promise<boolean> => {
     let ret = false
     if (hwAccess) {
@@ -20,13 +21,18 @@ const setHwAndEnablePortStt = async (
                 setEnablePortStt(stt)
                 ret = true
             } else {
-                console.error("Fail to hwAccess.setResetPort(stt)")
+                setErrMsg(["Fail to hwAccess.setResetPort(stt)"])
             }
         } catch (e) {
-            console.error(e)
+            if (e instanceof Error) {
+                const errorMessage: string = e.message;
+                setErrMsg([errorMessage])
+            } else {
+                setErrMsg(["Unknown Error"])
+            }            
         }
     } else {
-        console.error("hwAccess is falsy")
+        setErrMsg(["hwAccess is falsy"])
     }
     return ret
 }
@@ -34,7 +40,8 @@ const setHwAndEnablePortStt = async (
 const setHwAndSleepPortStt = async (
     stt: boolean,
     hwAccess: HwAccess | null,
-    setSleepPortStt: (stt: boolean) => void
+    setSleepPortStt: (stt: boolean) => void,
+    setErrMsg: (msgs:string[]) => void
 ): Promise<boolean> => {
     let ret = false
     if (hwAccess) {
@@ -42,13 +49,18 @@ const setHwAndSleepPortStt = async (
             if (await hwAccess.setSleepPort(stt)) {
                 setSleepPortStt(stt)
             } else {
-                console.error("Fail to hwAccess.setSleepPort(stt)")
+                setErrMsg(["Fail to hwAccess.setSleepPort(stt)"])
             }
         } catch (e) {
-            console.error(e)
+            if (e instanceof Error) {
+                const errorMessage: string = e.message;
+                setErrMsg([errorMessage])
+            } else {
+                setErrMsg(["Unknown Error"])
+            }            
         }
     } else {
-        console.error("hwAccess is falsy")
+        setErrMsg(["hwAccess is falsy"])
     }
     return ret
 }
@@ -87,35 +99,42 @@ const execResetSequence = async (
     setEnablePortStt: (stt: boolean) => void,
     setSleepPortStt: (stt: boolean) => void,
     setDisable: (stt: boolean) => void,
+    setErrMsg: (msgs:string[]) => void
 ) => {
     if (hwAccess) {
         try {
             setDisable(true)
             const reestDuration = (sequenceType === resetSequenceEnum.NormalLong || sequenceType === resetSequenceEnum.FwUpdateLong) ? 1000 : 500
-            setHwAndEnablePortStt(false, hwAccess, setEnablePortStt)
+            setHwAndEnablePortStt(false, hwAccess, setEnablePortStt,setErrMsg)
             if (
                 sequenceType === resetSequenceEnum.FwUpdateLong ||
                 sequenceType === resetSequenceEnum.FwUpdate
             ) {
-                setHwAndSleepPortStt(true, hwAccess, setSleepPortStt)
+                setHwAndSleepPortStt(true, hwAccess, setSleepPortStt,setErrMsg)
             } else {
-                setHwAndSleepPortStt(false, hwAccess, setSleepPortStt)
+                setHwAndSleepPortStt(false, hwAccess, setSleepPortStt,setErrMsg)
             }
             await new Promise<void>((resolve) => setTimeout(resolve, 300))
-            setHwAndEnablePortStt(true, hwAccess, setEnablePortStt)
+            setHwAndEnablePortStt(true, hwAccess, setEnablePortStt,setErrMsg)
             await new Promise<void>((resolve) => setTimeout(resolve, reestDuration))
-            setHwAndEnablePortStt(false, hwAccess, setEnablePortStt)
+            setHwAndEnablePortStt(false, hwAccess, setEnablePortStt,setErrMsg)
         } catch (e) {
-            console.error(e)
+            if (e instanceof Error) {
+                const errorMessage: string = e.message;
+                setErrMsg([errorMessage])
+            } else {
+                setErrMsg(["Unknown Error"])
+            }            
         } finally {
             setDisable(false)
         }
     } else {
-        console.error("hwAccess is null")
+        setErrMsg(["hwAccess is null"])
     }
 }
 
 export const HwAccessInit = (props: {
+    setErrMsg:(msgs:string[])=>void,
     hwAccess: HwAccess | null,
     disable: boolean,
     setDisable: (stt: boolean) => void,
@@ -126,6 +145,7 @@ export const HwAccessInit = (props: {
     option?: any
 }) => {
     const {
+        setErrMsg,
         hwAccess,
         disable,
         setDisable,
@@ -152,12 +172,23 @@ export const HwAccessInit = (props: {
                     if (hwAccess) {
                         setInitDisabled(true)
                         setDisable(true)
-                        const result = await hwAccess.init(option)
-                        setInitSuccess(result)
-                        setDisable(!result)
-                        if (result) {
-                            setHwAndEnablePortStt(false, hwAccess, setEnablePortStt)
-                            setHwAndSleepPortStt(false, hwAccess, setSleepPortStt)
+                        try {
+                            const result = await hwAccess.init(option)
+                            setInitSuccess(result)
+                            setDisable(!result)
+                            if (result) {
+                                setHwAndEnablePortStt(false, hwAccess, setEnablePortStt,setErrMsg)
+                                setHwAndSleepPortStt(false, hwAccess, setSleepPortStt,setErrMsg)
+                            }
+                        } catch(e) {
+                            setInitSuccess(false)
+                            setDisable(true)
+                            if (e instanceof Error) {
+                                const errorMessage: string = e.message;
+                                setErrMsg([errorMessage])
+                            } else {
+                                setErrMsg(["Unknown Error"])
+                            }            
                         }
                         setInitDisabled(false)
                     }
@@ -174,6 +205,7 @@ export const HwAccessInit = (props: {
     )
 }
 export const HwReset = (props: {
+    setErrMsg:(msgs:string[])=>void,
     hwAccess: HwAccess | null,
     disable: boolean,
     setDisable: (stt: boolean) => void,
@@ -183,6 +215,7 @@ export const HwReset = (props: {
     setSleepPortStt: (stt: boolean) => void,
 }) => {
     const {
+        setErrMsg,
         hwAccess,
         disable,
         setDisable,
@@ -201,7 +234,7 @@ export const HwReset = (props: {
                     }}
                 >
                     <button
-                        onClick={() => execResetSequence(hwAccess, resetSequenceEnum.NormalLong, setEnablePortStt, setSleepPortStt, setDisable)}
+                        onClick={() => execResetSequence(hwAccess, resetSequenceEnum.NormalLong, setEnablePortStt, setSleepPortStt, setDisable, setErrMsg)}
                         disabled={disable}
                         style={{
                             width: '8em',
@@ -212,7 +245,7 @@ export const HwReset = (props: {
                         Normal RESET
                     </button>
                     <button
-                        onClick={() => execResetSequence(hwAccess, resetSequenceEnum.FwUpdateLong, setEnablePortStt, setSleepPortStt, setDisable)}
+                        onClick={() => execResetSequence(hwAccess, resetSequenceEnum.FwUpdateLong, setEnablePortStt, setSleepPortStt, setDisable, setErrMsg)}
                         disabled={disable}
                         style={{
                             width: '8em',
@@ -234,7 +267,7 @@ export const HwReset = (props: {
                             id={'reset'}
                             checked={enablePortStt}
                             setChecked={async (stt: boolean) => {
-                                setHwAndEnablePortStt(stt, hwAccess, setEnablePortStt)
+                                setHwAndEnablePortStt(stt, hwAccess, setEnablePortStt,setErrMsg)
                             }}
                             checkedStr={"Resetting"}
                             unCheckedStr={'Reset Released'}
@@ -253,7 +286,7 @@ export const HwReset = (props: {
                             id={'sleep'}
                             checked={sleepPortStt}
                             setChecked={async (stt: boolean) => {
-                                setHwAndSleepPortStt(stt, hwAccess, setSleepPortStt)
+                                setHwAndSleepPortStt(stt, hwAccess, setSleepPortStt,setErrMsg)
                             }}
                             checkedStr={"FW Update"}
                             unCheckedStr={'Normal Reset'}

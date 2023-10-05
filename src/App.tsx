@@ -13,6 +13,7 @@ function App() {
   const [disable, setDisable] = useState<boolean>(true)
   const [hwAccess, setHwAccess] = useState<HwAccess | null>(null)
   const [dispDebug, setDispDebut] = useState<boolean>(false)
+  const [errMsg, setErrMsg] = useState<string[]>([])
 
   useEffect(()=>{
     setHwAccess(new HwAccessFt4232(setInitSuccess))
@@ -35,6 +36,7 @@ function App() {
         }}
       >
         <HwAccessInit
+          setErrMsg={setErrMsg}
           hwAccess={hwAccess}
           disable={disable}
           setDisable={setDisable}
@@ -44,6 +46,7 @@ function App() {
           setSleepPortStt={setSleepPortStt}
         />
         <HwReset
+          setErrMsg={setErrMsg}
           hwAccess={hwAccess}
           disable={resetCtrlDisable}
           setDisable={setDisable}
@@ -58,6 +61,9 @@ function App() {
           padding: '32px'
         }}
       >
+        <div>
+          {errMsg.map((msg, idx)=>(<pre key={idx.toString(10)} style={{ margin: '8px'}}>{msg}</pre>))}
+        </div>
         <hr></hr>
         <label
             // このlabel要素内でクリックするとcheckboxのonChange()が呼ばれる
